@@ -13,12 +13,17 @@ class Part extends Model
     protected $fillable = [
         'name',
         'serialnumber',
-        'quantity',   // nový stĺpec
+        'quantity',   // ostáva v parts (1:N režim)
         'car_id',
     ];
 
     public function car(): BelongsTo
     {
         return $this->belongsTo(Car::class);
+    }
+
+    // (voliteľné) vyhľadávanie
+    public function scopeSearch($q, ?string $term) {
+        return $term ? $q->where(fn($w)=>$w->where('name','like',"%$term%")->orWhere('serialnumber','like',"%$term%")) : $q;
     }
 }
