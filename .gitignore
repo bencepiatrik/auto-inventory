@@ -1,0 +1,30 @@
+# Laravel app env
+src/.env
+
+# Laravel vendor deps
+src/vendor/*
+
+# Node deps
+src/node_modules/
+
+# Laravel storage/cache/logs
+src/storage/*.key
+src/storage/app/
+src/storage/debugbar/
+src/storage/framework/
+src/storage/logs/
+src/storage/*.log
+
+# Laravel cached bootstrap
+src/bootstrap/cache/*.php
+
+# Composer dump files
+src/composer.phar
+
+# OS / IDE noise
+.DS_Store
+.idea/
+.vscode/
+
+# Docker volumes (MySQL data is stored outside repo)
+mysql_data/

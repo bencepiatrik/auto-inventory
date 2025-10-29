@@ -1,0 +1,46 @@
+services:
+  app:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: auto-inventory-app
+    working_dir: /var/www/html
+    volumes:
+      - ./src:/var/www/html
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: autoinventory
+      DB_USERNAME: autouser
+      DB_PASSWORD: autopass
+    depends_on:
+      - db
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: auto-inventory-web
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+  db:
+    image: mysql:8.0
+    container_name: auto-inventory-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: autoinventory
+      MYSQL_USER: autouser
+      MYSQL_PASSWORD: autopass
+      MYSQL_ROOT_PASSWORD: rootpass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+
+volumes:
+  mysql_data:
