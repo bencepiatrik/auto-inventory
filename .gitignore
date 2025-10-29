@@ -1,5 +1,6 @@
 # Laravel app env
-src/.env
+# Added for easy testing
+# src/.env
 
 # Laravel vendor deps
 src/vendor/*
