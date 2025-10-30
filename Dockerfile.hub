@@ -1,0 +1,29 @@
+# Dockerfile.hub – image, ktorý pôjde na Docker Hub
+FROM php:8.3-fpm
+
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    curl \
+    netcat-openbsd \
+    && docker-php-ext-install pdo_mysql zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# app code
+WORKDIR /var/www/html
+COPY src/ /var/www/html
+
+# entrypoint z projektu
+COPY docker/php/entrypoint.sh /usr/local/bin/app-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/app-entrypoint.sh && chmod +x /usr/local/bin/app-entrypoint.sh
+
+EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/app-entrypoint.sh"]

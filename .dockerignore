@@ -1,0 +1,7 @@
+# default: ignoruj VŠETKO
+**
+
+# ale tieto nechaj
+!Dockerfile.hub
+!src/**
+!docker/php/entrypoint.sh

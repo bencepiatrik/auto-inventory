@@ -50,34 +50,7 @@ docker compose up --build
 1) V prázdnom priečinku vytvor `docker-compose.yml`:
 
 ```yaml
-version: "3.9"
-
 services:
-  app:
-    image: bencepiatrik/auto-inventory-app:latest
-    container_name: auto-inventory-app
-    environment:
-      APP_ENV: production
-      APP_DEBUG: "false"
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: autoinventory
-      DB_USERNAME: autouser
-      DB_PASSWORD: autopass
-    depends_on:
-      - db
-
-  web:
-    image: nginx:1.27-alpine
-    container_name: auto-inventory-web
-    depends_on:
-      - app
-    ports:
-      - "8080:80"
-    volumes:
-      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
-
   db:
     image: mysql:8.0
     container_name: auto-inventory-db
@@ -91,6 +64,33 @@ services:
       - mysql_data:/var/lib/mysql
     ports:
       - "3307:3306"
+
+  app:
+    image: bencepiatrik/auto-inventory-app:latest
+    container_name: auto-inventory-app
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8080
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: autoinventory
+      DB_USERNAME: autouser
+      DB_PASSWORD: autopass
+      APP_SEED: "true"
+    depends_on:
+      - db
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: auto-inventory-web
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -115,6 +115,7 @@ volumes:
 server {
     listen 80;
     server_name _;
+
     root /var/www/html/public;
     index index.php index.html;
 
@@ -130,6 +131,7 @@ server {
 
     client_max_body_size 20M;
 }
+
 ```
 
 3) Spusť:
