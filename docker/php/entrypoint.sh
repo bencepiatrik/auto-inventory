@@ -1,23 +1,53 @@
-#!/bin/bash
+#!/bin/sh
 set -e
-APP_DIR="/var/www/html"
-cd $APP_DIR
 
-echo "[app-init] composer install if needed"
-if [ ! -d "vendor" ] || [ -z "$(ls -A vendor 2>/dev/null)" ]; then
-  composer install
+cd /var/www/html
+
+echo "[entrypoint] starting setup..."
+
+# 1) .env
+if [ ! -f .env ] && [ -f .env.example ]; then
+  echo "[entrypoint] .env not found -> copying .env.example"
+  cp .env.example .env
 fi
 
-echo "[app-init] fix perms"
-chmod -R 777 storage bootstrap/cache || true
+# 2) composer install (len ak nemáme vendor)
+if [ -f composer.json ] && [ ! -d vendor ]; then
+  echo "[entrypoint] vendor/ not found -> running composer install"
+  composer install --no-interaction --prefer-dist --no-progress || true
+fi
 
-echo "[app-init] wait for DB"
-MAX=30; i=0
-until php -r "try{new PDO('mysql:host='.getenv('DB_HOST').';port='.getenv('DB_PORT').';dbname='.getenv('DB_DATABASE'),getenv('DB_USERNAME'),getenv('DB_PASSWORD'));exit(0);}catch(Exception \$e){exit(1);}"; do
-  i=$((i+1)); [ $i -ge $MAX ] && break; sleep 2
+# 3) čakáme na DB (aj keď compose má healthcheck, toto nič nepokazí)
+DB_HOST=${DB_HOST:-db}
+DB_PORT=${DB_PORT:-3306}
+MAX_TRIES=30
+
+echo "[entrypoint] waiting for DB at ${DB_HOST}:${DB_PORT} ..."
+i=0
+while ! nc -z "$DB_HOST" "$DB_PORT"; do
+  i=$((i+1))
+  if [ "$i" -ge "$MAX_TRIES" ]; then
+    echo "[entrypoint] DB is not ready after $MAX_TRIES tries, continuing anyway..."
+    break
+  fi
+  sleep 2
 done
 
-echo "[app-init] migrate"
-php artisan migrate --force || true
+# 4) artisan key + clears (nesmie zabiť kontajner)
+php artisan key:generate --force || true
+php artisan config:clear || true
+php artisan route:clear || true
+php artisan view:clear || true
 
-exec php-fpm
+# 5) migrate (idempotentné)
+echo "[entrypoint] running migrations..."
+php artisan migrate --force || echo "[entrypoint] migrate failed (DB maybe empty or not ready), continuing..."
+
+# 6) seed (voliteľné) - zapni cez ENV: APP_SEED=true
+if [ "$APP_SEED" = "true" ]; then
+  echo "[entrypoint] running db:seed..."
+  php artisan db:seed --force || echo "[entrypoint] seeding failed, continuing..."
+fi
+
+echo "[entrypoint] starting php-fpm..."
+exec php-fpm -F
