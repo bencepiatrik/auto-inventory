@@ -143,7 +143,7 @@ docker compose up -d
 - **Port už používa iná appka** → uprav mapovanie portov v compose (napr. `8082:80`).
 - **MySQL štartuje pomaly** → prvé spustenie vytvára DB súbory; nechaj compose bežať, `app` čaká na DB.
 - **Práva na `storage/` (Windows)** → rieši entrypoint; ak treba:  
-  `docker compose exec app chmod -R 777 storage bootstrap/cache`
+  `docker compose exec app sh -c "mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache && chmod -R 777 storage bootstrap/cache"`
 - **Čistý reset**:  
   `docker compose down -v && docker compose up --build`
 
