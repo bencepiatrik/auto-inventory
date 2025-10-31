@@ -1,20 +1,24 @@
 # Auto Inventory
 
-Dockerized **Laravel + Vue + MySQL + phpMyAdmin** projekt (Bootstrap 5, Vite HMR).
+Dockerized **Laravel + MySQL + Nginx + phpMyAdmin** projekt.  
+Frontend je robený cez **Blade + Bootstrap (CDN)**.
 
 ## Stack
-- **Laravel** (PHP 8.3, migrations)
-- **Vue 3** (Vite dev server – HMR)
-- **Nginx** (reverse proxy pre PHP-FPM)
+
+- **Laravel 10+/PHP 8.3** (migrácie, kontroléry, FormRequests)
+- **Nginx** (reverse proxy na PHP-FPM)
+- **PHP-FPM** (kontajner `app`)
 - **MySQL 8** + **phpMyAdmin**
 - **Docker Compose** (multi-container setup)
+- entrypoint rieši: `.env` → vytvorenie `storage/...` → `composer install` (ak treba) → `php artisan migrate --force`
 
-## Porty (default)
-- App (Nginx): **http://localhost:8080**
-- Vite (HMR, dev): **http://localhost:5173**
+## Porty
+
+- aplikácia (Nginx): **http://localhost:8080**
 - phpMyAdmin: **http://localhost:8081**
+- MySQL (host): **3307** → kontajner: **3306**
 
-DB prístup (dev/demo):
+## DB prístup (dev/demo):
 - Host: `db`
 - Port: `3306`
 - User: `autouser`
