@@ -1,52 +1,75 @@
 #!/bin/sh
 set -e
 
+# pracujeme v laravel root-e
 cd /var/www/html
 
 echo "[entrypoint] starting setup..."
 
-# 1) .env
+#
+# 1) .env pri prvom štarte
+#
 if [ ! -f .env ] && [ -f .env.example ]; then
-  echo "[entrypoint] .env not found -> copying .env.example"
+  echo "[entrypoint] .env not found, copying from .env.example"
   cp .env.example .env
 fi
 
-# 2) composer install (len ak nemáme vendor)
+#
+# 2) Laravel priečinky – TOTO je ten fix pre testerov
+#    (ak ich nevytvoríš, view:clear/migrate vedia spadnúť)
+#
+echo "[entrypoint] ensuring storage and cache dirs exist..."
+mkdir -p \
+  storage/framework/cache \
+  storage/framework/sessions \
+  storage/framework/views \
+  bootstrap/cache
+
+# na Windows to chmod niekedy ignoruje → preto || true
+chmod -R 777 storage bootstrap/cache || true
+
+#
+# 3) composer install pri prvom štarte kontajnera
+#    (ak máme vendor/, nerobíme nič)
+#
 if [ -f composer.json ] && [ ! -d vendor ]; then
-  echo "[entrypoint] vendor/ not found -> running composer install"
+  echo "[entrypoint] vendor/ missing → running composer install"
   composer install --no-interaction --prefer-dist --no-progress || true
 fi
 
-# 3) čakáme na DB (aj keď compose má healthcheck, toto nič nepokazí)
-DB_HOST=${DB_HOST:-db}
-DB_PORT=${DB_PORT:-3306}
-MAX_TRIES=30
+#
+# 4) artisan helpery
+#
+if [ -f artisan ]; then
+  echo "[entrypoint] running artisan helpers..."
+  php artisan key:generate --force || true
+  php artisan config:clear || true
+  php artisan route:clear || true
+  php artisan view:clear || true
+else
+  echo "[entrypoint] artisan not found, skipping artisan commands."
+fi
 
-echo "[entrypoint] waiting for DB at ${DB_HOST}:${DB_PORT} ..."
-i=0
-while ! nc -z "$DB_HOST" "$DB_PORT"; do
-  i=$((i+1))
-  if [ "$i" -ge "$MAX_TRIES" ]; then
-    echo "[entrypoint] DB is not ready after $MAX_TRIES tries, continuing anyway..."
-    break
-  fi
-  sleep 2
-done
+#
+# 5) migrácie – default: ÁNO
+#    môžeš vypnúť v compose: APP_MIGRATE=false
+#
+if [ "${APP_MIGRATE:-true}" = "true" ] && [ -f artisan ]; then
+  echo "[entrypoint] running migrations..."
+  php artisan migrate --force || true
+else
+  echo "[entrypoint] skipping migrations (APP_MIGRATE=${APP_MIGRATE:-true})"
+fi
 
-# 4) artisan key + clears (nesmie zabiť kontajner)
-php artisan key:generate --force || true
-php artisan config:clear || true
-php artisan route:clear || true
-php artisan view:clear || true
-
-# 5) migrate (idempotentné)
-echo "[entrypoint] running migrations..."
-php artisan migrate --force || echo "[entrypoint] migrate failed (DB maybe empty or not ready), continuing..."
-
-# 6) seed (voliteľné) - zapni cez ENV: APP_SEED=true
-if [ "$APP_SEED" = "true" ]; then
+#
+# 6) seeding – iba ak si to VÝSLOVNE pýtaš
+#    v compose: APP_SEED=true
+#
+if [ "${APP_SEED:-false}" = "true" ] && [ -f artisan ]; then
   echo "[entrypoint] running db:seed..."
-  php artisan db:seed --force || echo "[entrypoint] seeding failed, continuing..."
+  php artisan db:seed --force || true
+else
+  echo "[entrypoint] skipping db:seed (APP_SEED=${APP_SEED:-false})"
 fi
 
 echo "[entrypoint] starting php-fpm..."
